@@ -66,6 +66,7 @@ async fn get_views(cast: web::Path<String>, req: HttpRequest) -> impl Responder 
         //     return format!("{{\"views\": {}}}", &views);
         // }
     }
+    println!("Failed to get views for cast={}\n", cast);
     return format!("{{\"error\": \"failed to get views for {}\"}}", &cast);
 }
 
