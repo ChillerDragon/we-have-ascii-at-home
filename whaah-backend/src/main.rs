@@ -114,13 +114,13 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    println!("Starting backend at http://127.0.0.1:8080 ...\n");
+    println!("Starting backend at http://127.0.0.1:8180 ...\n");
     HttpServer::new(|| App::new()
                     .service(index)
                     .service(view)
                     .service(get_views)
                     .service(casts))
-        .bind(("127.0.0.1", 8080))?
+        .bind(("127.0.0.1", 8180))?
         .run()
         .await
 }
