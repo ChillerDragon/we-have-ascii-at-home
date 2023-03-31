@@ -17,6 +17,13 @@ It should just work with statically serving those files. No backend needed.
 
 You can additionally opt in to spin up some backend services. These unlock views and comments.
 
+It has my backend url hardcodet in the code at the moment since this is a hacky project for self use!
+
+You need `sqlite3` and rust installed.
+
 ```
-TODO: document backend setup when backend is finished
+./scripts/add_casts_to_db.sh
+
+cd whaah-backend
+cargo run
 ```
