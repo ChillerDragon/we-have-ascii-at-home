@@ -1,3 +1,21 @@
 html, body {
     background-color: rgb(63, 60, 60);
 }
+
+.player-container {
+    height: 900px;
+}
+
+.container {
+    background-color: rgb(90, 85, 94);
+    border-radius: 2em;
+    padding: 2em;
+    margin: 2em;
+}
+
+.comment {
+    background-color: rgb(164, 152, 152);
+    border-radius: 2em;
+    padding: 2em;
+    margin: 2em;
+}
