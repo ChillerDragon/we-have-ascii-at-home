@@ -1,10 +1,11 @@
-use actix_web::{get, http, web, App, HttpServer, Responder};
+use actix_web::{get, web, App, HttpServer, Responder, post};
 use actix_web::HttpRequest;
 use actix_cors::Cors;
 use chrono::{Local, DateTime};
 use std::fs;
 use sqlite;
 use sqlite::State;
+use serde::Deserialize;
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -41,8 +42,8 @@ async fn get_views(cast: web::Path<String>, req: HttpRequest) -> impl Responder 
         let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
         let user_agent = req.headers().get("user-agent").unwrap().to_str().unwrap();
         let ip_addr = req.peer_addr().unwrap().to_string();
-        let now: DateTime<Local> = Local::now();
-        let ts: String = now.to_string();
+        // let now: DateTime<Local> = Local::now();
+        // let ts: String = now.to_string();
         println!("Requesting view for cast_id={} ip={} user_agent={} cast={}", cast_id, &ip_addr, &user_agent, &cast);
         // TODO: bind this properly before mr bobby tables sees this
         //       also this whole code is such a hack
@@ -50,7 +51,7 @@ async fn get_views(cast: web::Path<String>, req: HttpRequest) -> impl Responder 
         let mut views = 0;
         connection
             .iterate(query, |pairs| {
-                for &(name, value) in pairs.iter() {
+                for &(_name, value) in pairs.iter() {
                     views = value.unwrap().parse().unwrap();
                     return true;
                 }
@@ -96,12 +97,12 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
             "VALUES ",
             "(?     , ? , ?        , ?        , ?      , ?)");
         let mut stmt = connection.prepare(query).unwrap();
-        stmt.bind((1, cast_id));
-        stmt.bind((2, ip_addr.as_str()));
-        stmt.bind((3, ts.as_str()));
-        stmt.bind((4, user_agent));
-        stmt.bind((5, "todo tracker"));
-        stmt.bind((6, "todo ref"));
+        stmt.bind((1, cast_id)).unwrap();
+        stmt.bind((2, ip_addr.as_str())).unwrap();
+        stmt.bind((3, ts.as_str())).unwrap();
+        stmt.bind((4, user_agent)).unwrap();
+        stmt.bind((5, "todo tracker")).unwrap();
+        stmt.bind((6, "todo ref")).unwrap();
         while let Ok(State::Row) = stmt.next() {
             println!("Failed to insert view\n");
             return format!("{{\"error\": \"failed to add view for {}\"}}", &cast);
@@ -114,6 +115,71 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
     return format!("{{\"error\": \"failed to add view for {}\"}}", &cast);
 }
 
+#[get("/comments/{name}")]
+async fn get_comments(cast: web::Path<String>) -> impl Responder {
+    let connection = sqlite::open("../db/whaah.db").unwrap();
+    let query = "SELECT ID FROM casts WHERE Filename = ?";
+
+    let mut stmt = connection.prepare(query).unwrap();
+    stmt.bind((1, cast.to_string().as_str())).unwrap();
+
+    while let Ok(State::Row) = stmt.next() {
+        // let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
+        // let query = "SELECT * FROM comments WHERE CastID = ?";
+        println!("Gettings comments for cast: {}", &cast);
+        return format!("{{\"comments\": [{{\"message\": \"add view for {}\"}}}}", &cast);
+    }
+
+    println!("Tried to get comments for invalid cast: {}", &cast);
+    return format!("{{\"error\": \"failed to get comments for {}\"}}", &cast);
+}
+
+
+#[derive(Deserialize)]
+struct Comment {
+        author: String,
+        message: String,
+}
+
+#[post("/comments/{cast}")]
+async fn post_comment(cast: web::Path<String>, comment: web::Json<Comment>, req: HttpRequest) -> impl Responder {
+    println!("got comment={}\n", comment.message);
+    println!("{:#?}\n", req);
+    let connection = sqlite::open("../db/whaah.db").unwrap();
+    let query = "SELECT ID FROM casts WHERE Filename = ?";
+
+    let mut stmt = connection.prepare(query).unwrap();
+    stmt.bind((1, cast.to_string().as_str())).unwrap();
+
+    while let Ok(State::Row) = stmt.next() {
+        let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
+        let user_agent = req.headers().get("user-agent").unwrap().to_str().unwrap();
+        let ip_addr = req.peer_addr().unwrap().to_string();
+        let now: DateTime<Local> = Local::now();
+        let ts: String = now.to_string();
+        println!("Adding comment for cast_id={} ip={} user_agent={} author={} message='{}' cast={}", cast_id, &ip_addr, &user_agent, &comment.author, &comment.message, &cast);
+        let query = concat!(
+            "INSERT INTO commentsa ",
+            "(CastID, Author, Message, IP, Timestamp, UserAgent, Tracker, Ref) ",
+            "VALUES ",
+            "(?     , ?     , ?      ,? , ?        , ?        , ?      , ?)");
+        let mut stmt = connection.prepare(query).unwrap();
+        stmt.bind((1, cast_id)).unwrap();
+        stmt.bind((2, comment.author.as_str())).unwrap();
+        stmt.bind((3, comment.message.as_str())).unwrap();
+        stmt.bind((4, ip_addr.as_str())).unwrap();
+        stmt.bind((5, ts.as_str())).unwrap();
+        stmt.bind((6, user_agent)).unwrap();
+        stmt.bind((7, "todo tracker")).unwrap();
+        stmt.bind((8, "todo ref")).unwrap();
+        let res = stmt.next();
+        println!("Inserted comment stmt: {:#?}\n", res);
+        return format!("{{\"message\": \"add comment for {}\"}}", &cast);
+    }
+    println!("Tried to comment invalid cast: {}", &cast);
+    return format!("{{\"error\": \"failed to add view for {}\"}}", &cast);
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Starting backend at http://127.0.0.1:8180 ...\n");
@@ -123,6 +189,8 @@ async fn main() -> std::io::Result<()> {
                     .service(view)
                     .service(get_views)
                     .service(casts)
+                    .service(post_comment)
+                    .service(get_comments)
                     .wrap(Cors::permissive())
 		)
         .bind(("127.0.0.1", 8180))?
