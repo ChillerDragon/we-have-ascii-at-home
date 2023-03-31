@@ -7,7 +7,9 @@
   <div id="demo"></div>
   <script src="/asciinema-player.min.js"></script>
   <script>
-    AsciinemaPlayer.create('/twnet.cast', document.getElementById('demo'));
+    const params = new URLSearchParams(document.location.search);
+    const cast = params.get('a') ? params.get('a') : 'twnet';
+    AsciinemaPlayer.create(`/casts/${cast}.cast`, document.getElementById('demo'));
   </script>
 </body>
 </html>
