@@ -116,20 +116,14 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Starting backend at http://127.0.0.1:8180 ...\n");
-    HttpServer::new(|| {
-        let cors = Cors::default()
-              .allowed_origin("*")
-              .allowed_methods(vec!["GET", "POST"])
-              .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
-              .allowed_header(http::header::CONTENT_TYPE)
-              .max_age(3600);
-
+    HttpServer::new(||
                     App::new()
                     .service(index)
                     .service(view)
                     .service(get_views)
                     .service(casts)
-		})
+                    .wrap(Cors::permissive())
+		)
         .bind(("127.0.0.1", 8180))?
         .run()
         .await
