@@ -6,6 +6,7 @@ use serde::Deserialize;
 use sqlite;
 use sqlite::State;
 use std::fs;
+use regex::Regex;
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -125,6 +126,12 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
     return format!("{{\"error\": \"failed to add view for {}\"}}", &cast);
 }
 
+#[derive(Deserialize)]
+struct Comment {
+    author: String,
+    message: String,
+}
+
 #[get("/comments/{name}")]
 async fn get_comments(cast: web::Path<String>) -> impl Responder {
     let connection = sqlite::open("../db/whaah.db").unwrap();
@@ -134,9 +141,18 @@ async fn get_comments(cast: web::Path<String>) -> impl Responder {
     stmt.bind((1, cast.to_string().as_str())).unwrap();
 
     while let Ok(State::Row) = stmt.next() {
-        // let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
-        // let query = "SELECT * FROM comments WHERE CastID = ?";
+        let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
+        let query = "SELECT * FROM comments WHERE CastID = ?";
+        let mut stmt = connection.prepare(query).unwrap();
+        stmt.bind((1, cast_id)).unwrap();
         println!("Gettings comments for cast: {}", &cast);
+
+        while let Ok(State::Row) = stmt.next() {
+            let author: String = stmt.read::<String, _>("Author").unwrap();
+            let message: String = stmt.read::<String, _>("Message").unwrap();
+            println!("author={} message={}\n", author, message);
+        }
+
         return format!(
             "{{\"comments\": [{{\"message\": \"add view for {}\"}}}}",
             &cast
@@ -147,12 +163,6 @@ async fn get_comments(cast: web::Path<String>) -> impl Responder {
     return format!("{{\"error\": \"failed to get comments for {}\"}}", &cast);
 }
 
-#[derive(Deserialize)]
-struct Comment {
-    author: String,
-    message: String,
-}
-
 #[post("/comments/{cast}")]
 async fn post_comment(
     cast: web::Path<String>,
@@ -161,6 +171,14 @@ async fn post_comment(
 ) -> impl Responder {
     println!("got comment={}\n", comment.message);
     println!("{:#?}\n", req);
+
+
+    let re = Regex::new(r"^[a-zA-Z0-9\.,:!?=*#\\()\[\]{}_ -]+$").unwrap();
+    if !re.is_match(&comment.message) {
+        // TODO: this is not valid json use some proper rust json builder
+        return format!("{{\"error\": \"comment message did not match {}\"}}", re);
+    }
+
     let connection = sqlite::open("../db/whaah.db").unwrap();
     let query = "SELECT ID FROM casts WHERE Filename = ?";
 
@@ -178,7 +196,7 @@ async fn post_comment(
             cast_id, &ip_addr, &user_agent, &comment.author, &comment.message, &cast
         );
         let query = concat!(
-            "INSERT INTO commentsa ",
+            "INSERT INTO comments ",
             "(CastID, Author, Message, IP, Timestamp, UserAgent, Tracker, Ref) ",
             "VALUES ",
             "(?     , ?     , ?      ,? , ?        , ?        , ?      , ?)"

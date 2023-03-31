@@ -1373,6 +1373,7 @@ dependencies = [
  "actix-web",
  "chrono",
  "json",
+ "regex",
  "serde",
  "sqlite",
 ]
