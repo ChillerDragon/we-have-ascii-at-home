@@ -178,6 +178,10 @@ async fn post_comment(
         // TODO: this is not valid json use some proper rust json builder
         return format!("{{\"error\": \"comment message did not match {}\"}}", re);
     }
+    if !re.is_match(&comment.author) {
+        // TODO: this is not valid json use some proper rust json builder
+        return format!("{{\"error\": \"comment author did not match {}\"}}", re);
+    }
 
     let connection = sqlite::open("../db/whaah.db").unwrap();
     let query = "SELECT ID FROM casts WHERE Filename = ?";
