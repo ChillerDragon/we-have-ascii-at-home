@@ -1,6 +1,7 @@
-use actix_web::{get, web, App, HttpServer, Responder};
-use chrono::{Local, DateTime};
+use actix_web::{get, http, web, App, HttpServer, Responder};
 use actix_web::HttpRequest;
+use actix_cors::Cors;
+use chrono::{Local, DateTime};
 use std::fs;
 use sqlite;
 use sqlite::State;
@@ -115,11 +116,20 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Starting backend at http://127.0.0.1:8180 ...\n");
-    HttpServer::new(|| App::new()
+    HttpServer::new(|| {
+        let cors = Cors::default()
+              .allowed_origin("*")
+              .allowed_methods(vec!["GET", "POST"])
+              .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+              .allowed_header(http::header::CONTENT_TYPE)
+              .max_age(3600);
+
+                    App::new()
                     .service(index)
                     .service(view)
                     .service(get_views)
-                    .service(casts))
+                    .service(casts)
+		})
         .bind(("127.0.0.1", 8180))?
         .run()
         .await
