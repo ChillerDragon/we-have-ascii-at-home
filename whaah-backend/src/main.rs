@@ -8,6 +8,18 @@ use sqlite;
 use sqlite::State;
 use std::fs;
 
+/// Comments are ratelimited per ip
+/// one ip across all casts can only comment
+/// every `COMMENT_DELAY_IN_SECONDS` seconds
+const COMMENT_DELAY_IN_SECONDS: i64 = 60;
+
+/// Views are ratelimited per ip
+/// meaning if someone views the same
+/// cast with the same ip there have to be
+/// more than `VIEW_COUNT_DELAY_IN_MINUTES` minutes
+/// passed or the view will not be counted
+const VIEW_COUNT_DELAY_IN_MINUTES: i64 = 10;
+
 #[derive(Serialize, Deserialize)]
 struct Comment {
     author: String,
@@ -99,8 +111,6 @@ async fn get_views(cast: web::Path<String>, req: HttpRequest) -> impl Responder 
         let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
         let user_agent = req.headers().get("user-agent").unwrap().to_str().unwrap();
         let ip_addr = get_ip(&req);
-        // let now: DateTime<Local> = Local::now();
-        // let ts: String = now.to_string();
         println!(
             "Requesting view for cast_id={} ip={} user_agent={} cast={}",
             cast_id, &ip_addr, &user_agent, &cast
@@ -178,11 +188,12 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
                 "  last view from this ip was {} ({} minutes ago)\n",
                 last_ts, last_view_mins_ago
             );
-            if last_view_mins_ago < 10 {
+            if last_view_mins_ago < VIEW_COUNT_DELAY_IN_MINUTES {
                 let err = ErrorMsg {
                     error: format!(
-                        "Not counting another view since your last was {} minutes ago",
-                        last_view_mins_ago
+                        "Not counting another view since your last was {}/{} minutes ago",
+                        last_view_mins_ago,
+                        VIEW_COUNT_DELAY_IN_MINUTES
                     ),
                 };
                 return serde_json::to_string(&err).unwrap();
@@ -287,11 +298,46 @@ async fn post_comment(
         let user_agent = req.headers().get("user-agent").unwrap().to_str().unwrap();
         let ip_addr = get_ip(&req);
         let now: DateTime<Local> = Local::now();
-        let ts: String = now.to_string();
+        let now = now.with_timezone(now.offset());
+        let ts: String = now.to_rfc3339();
         println!(
             "Adding comment for cast_id={} ip={} user_agent={} author={} message='{}' cast={}",
             cast_id, &ip_addr, &user_agent, &comment.author, &comment.message, &cast
         );
+
+
+
+        let query = concat!(
+            "SELECT Timestamp ",
+            "FROM comments ",
+            "WHERE IP = ? ",
+            "ORDER BY Timestamp ",
+            "DESC LIMIT 1"
+        );
+        let mut stmt = connection.prepare(query).unwrap();
+        stmt.bind((1, ip_addr.as_str())).unwrap();
+
+        while let Ok(State::Row) = stmt.next() {
+            let last_ts = stmt.read::<String, _>("Timestamp").unwrap();
+            let last_date = DateTime::parse_from_rfc3339(&last_ts).unwrap();
+            let last_comment_secs_ago: i64 = (now - last_date).num_seconds();
+            println!(
+                "  last comment from this ip was {} ({} seconds ago)\n",
+                last_ts, last_comment_secs_ago
+            );
+            if last_comment_secs_ago < COMMENT_DELAY_IN_SECONDS {
+                let secs_left = COMMENT_DELAY_IN_SECONDS - last_comment_secs_ago;
+                let err = ErrorMsg {
+                    error: format!(
+                        "Please wait {} seconds before writing another comment",
+                        secs_left
+                    ),
+                };
+                return serde_json::to_string(&err).unwrap();
+            }
+        }
+
+
         let query = concat!(
             "INSERT INTO comments ",
             "(CastID, Author, Message, IP, Timestamp, UserAgent, Tracker, Ref) ",
