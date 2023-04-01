@@ -2,11 +2,11 @@ use actix_cors::Cors;
 use actix_web::HttpRequest;
 use actix_web::{get, post, web, App, HttpServer, Responder};
 use chrono::{DateTime, Local};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sqlite;
 use sqlite::State;
 use std::fs;
-use regex::Regex;
 
 #[derive(Serialize, Deserialize)]
 struct Comment {
@@ -21,26 +21,24 @@ struct ErrorMsg {
 }
 
 #[derive(Serialize)]
-struct InfoMsg{
+struct InfoMsg {
     message: String,
 }
 
 #[derive(Serialize)]
-struct GetViews{
+struct GetViews {
     views: i64,
 }
 
 fn info_msg(msg: String) -> String {
     let info = InfoMsg {
-        message: msg.clone()
+        message: msg.clone(),
     };
     return serde_json::to_string(&info).unwrap();
 }
 
 fn err_msg(msg: String) -> String {
-    let err = ErrorMsg {
-        error: msg.clone()
-    };
+    let err = ErrorMsg { error: msg.clone() };
     return serde_json::to_string(&err).unwrap();
 }
 
@@ -48,17 +46,16 @@ fn get_ip(req: &HttpRequest) -> String {
     // let ip_addr = req.peer_addr().unwrap().to_string(); // with port
     let ip_addr = req.peer_addr().unwrap().ip().to_string(); // w out port
     if ip_addr == "127.0.0.1" || ip_addr == "::1" {
-        let forward_ip = match req.headers().get("x-forwarded-for") {
-            Some(forward_ip) => forward_ip.to_str().unwrap(),
-            None => ""
-        };
-        if forward_ip != "" {
-            return forward_ip.to_string();
+        // if client is local host
+        // check if there is a proxy in front of the api backend
+        let forward = req.headers().get("x-forwarded-for");
+        if let Some(forward) = forward {
+            let ips: Vec<&str> = forward.to_str().unwrap().split(",").collect();
+            return ips[0].to_string();
         }
     }
     return ip_addr;
 }
-
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -118,9 +115,7 @@ async fn get_views(cast: web::Path<String>, req: HttpRequest) -> impl Responder 
             })
             .unwrap();
 
-        let views_msg = GetViews {
-            views: views
-        };
+        let views_msg = GetViews { views: views };
         return serde_json::to_string(&views_msg).unwrap();
 
         // let query = "select count(*) as views from views where CastID = ?;";
@@ -163,7 +158,8 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
             "FROM views ",
             "WHERE IP = ? ",
             "ORDER BY Timestamp ",
-            "DESC LIMIT 1");
+            "DESC LIMIT 1"
+        );
         let mut stmt = connection.prepare(query).unwrap();
         stmt.bind((1, ip_addr.as_str())).unwrap();
 
@@ -171,13 +167,16 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
             let last_ts = stmt.read::<String, _>("Timestamp").unwrap();
             let last_date = DateTime::parse_from_rfc3339(&last_ts).unwrap();
             let last_view_mins_ago: i64 = (now - last_date).num_minutes();
-            println!("  last view from this ip was {} ({} minutes ago)\n", last_ts, last_view_mins_ago);
+            println!(
+                "  last view from this ip was {} ({} minutes ago)\n",
+                last_ts, last_view_mins_ago
+            );
             if last_view_mins_ago < 10 {
                 let err = ErrorMsg {
                     error: format!(
-                            "Not counting another view since your last was {} minutes ago",
-                            last_view_mins_ago
-                        )
+                        "Not counting another view since your last was {} minutes ago",
+                        last_view_mins_ago
+                    ),
                 };
                 return serde_json::to_string(&err).unwrap();
             }
@@ -234,7 +233,7 @@ async fn get_comments(cast: web::Path<String>) -> impl Responder {
             let cmt = Comment {
                 author: author,
                 message: message,
-                timestamp: timestamp
+                timestamp: timestamp,
             };
             comments.push(cmt);
         }
@@ -255,18 +254,17 @@ async fn post_comment(
     println!("got comment={}\n", comment.message);
     println!("{:#?}\n", req);
 
-
     let re_author = Regex::new(r"^[a-zA-Z0-9_-]{1,32}$").unwrap();
     let re_comment = Regex::new(r"^[a-zA-Z0-9\.,:!?=*#\\()\[\]{}_\n -]{1,2048}$").unwrap();
     if !re_comment.is_match(&comment.message) {
         let err = ErrorMsg {
-            error: format!("comment message did not match {}", re_comment)
+            error: format!("comment message did not match {}", re_comment),
         };
         return serde_json::to_string(&err).unwrap();
     }
     if !re_author.is_match(&comment.author) {
         let err = ErrorMsg {
-            error: format!("comment author did not match {}", re_author)
+            error: format!("comment author did not match {}", re_author),
         };
         return serde_json::to_string(&err).unwrap();
     }
