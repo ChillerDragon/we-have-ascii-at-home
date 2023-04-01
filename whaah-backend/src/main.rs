@@ -238,16 +238,17 @@ async fn post_comment(
     println!("{:#?}\n", req);
 
 
-    let re = Regex::new(r"^[a-zA-Z0-9\.,:!?=*#\\()\[\]{}_\n -]+$").unwrap();
-    if !re.is_match(&comment.message) {
+    let re_author = Regex::new(r"^[a-zA-Z0-9_-]{1,32}$").unwrap();
+    let re_comment = Regex::new(r"^[a-zA-Z0-9\.,:!?=*#\\()\[\]{}_\n -]+$").unwrap();
+    if !re_comment.is_match(&comment.message) {
         let err = ErrorMsg {
-            error: format!("comment message did not match {}", re)
+            error: format!("comment message did not match {}", re_comment)
         };
         return serde_json::to_string(&err).unwrap();
     }
-    if !re.is_match(&comment.author) {
+    if !re_author.is_match(&comment.author) {
         let err = ErrorMsg {
-            error: format!("comment author did not match {}", re)
+            error: format!("comment author did not match {}", re_author)
         };
         return serde_json::to_string(&err).unwrap();
     }
