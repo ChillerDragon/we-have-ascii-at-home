@@ -9,6 +9,7 @@ fi
 
 get_db() {
 	local dbfile="$SCRIPT_ROOT/../db/whaah.db"
+	mkdir -p "$SCRIPT_ROOT/../db/"
 	if [ ! -f "$dbfile" ]
 	then
 		sqlite3 "$dbfile" < "$SCRIPT_ROOT/../other/schema.sql"
