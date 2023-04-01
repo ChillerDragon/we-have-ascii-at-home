@@ -118,7 +118,11 @@ commentForm.addEventListener('submit', (event) => {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({author: author, message: message})
+        body: JSON.stringify({
+            author: author,
+            message: message,
+            timestamp: new Date().toISOString()
+        })
     })
         .then(res => res.json())
         .then(data => {

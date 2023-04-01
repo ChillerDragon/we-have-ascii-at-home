@@ -12,6 +12,7 @@ use regex::Regex;
 struct Comment {
     author: String,
     message: String,
+    timestamp: String,
 }
 
 #[derive(Serialize)]
@@ -215,9 +216,11 @@ async fn get_comments(cast: web::Path<String>) -> impl Responder {
         while let Ok(State::Row) = stmt.next() {
             let author: String = stmt.read::<String, _>("Author").unwrap();
             let message: String = stmt.read::<String, _>("Message").unwrap();
+            let timestamp: String = stmt.read::<String, _>("Timestamp").unwrap();
             let cmt = Comment {
                 author: author,
-                message: message
+                message: message,
+                timestamp: timestamp
             };
             comments.push(cmt);
         }
