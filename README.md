@@ -27,3 +27,12 @@ You need `sqlite3` and rust installed.
 cd whaah-backend
 cargo run
 ```
+
+## Use the api
+
+Write comments using curl
+
+```bash
+curl -X POST -H "Content-Type: application/json" --data '{"author": "nameless", "message": "sample comment"}' http://localhost:8180/comments/twnet.cast
+```
+
