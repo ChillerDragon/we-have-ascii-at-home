@@ -15,8 +15,15 @@
     </div>
     <hr>
     <form id="comment-form" action="get">
-      <input type="hidden" name="comment" id="comment" placeholder="write your comment here">
-      <!-- <input type="submit" value="comment"> -->
+      <input type="text" name="author" id="author" placeholder="your name">
+      <textarea
+        rows="5"
+        cols="80"
+        id="comment"
+        name="comment"
+        placeholder="write your comment here">
+      </textarea>
+      <input type="submit" value="comment">
     </form>
   </div>
   <div class="comments">

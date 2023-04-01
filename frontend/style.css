@@ -19,3 +19,13 @@ html, body {
     padding: 2em;
     margin: 2em;
 }
+
+.comment-author {
+    color: black;
+    font-size: large;
+}
+
+.comment-message {
+    color: rgb(71, 71, 71);
+    font-size: medium;
+}

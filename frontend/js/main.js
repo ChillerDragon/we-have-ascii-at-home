@@ -2,6 +2,7 @@ const viewNum = document.querySelector('#view-value')
 const titleDom = document.querySelector('.title')
 const commentForm = document.querySelector('#comment-form')
 const commentInput = document.querySelector('#comment')
+const authorInput = document.querySelector('#author')
 const commentsBox = document.querySelector('.comments')
 
 const backendUrl = 'https://api-whaah.zillyhuhn.com'
@@ -12,8 +13,9 @@ titleDom.innerHTML = cast
 
 commentForm.addEventListener('submit', (event) => {
     event.preventDefault()
-    const msg = commentInput.value
-    if (!msg || msg === '') {
+    const message = commentInput.value
+    const author = authorInput.value
+    if (!message || message === '') {
         return
     }
     fetch(`${backendUrl}/comments/${cast}.cast`, {
@@ -21,7 +23,7 @@ commentForm.addEventListener('submit', (event) => {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({author: 'nameless', message: msg})
+        body: JSON.stringify({author: author, message: message})
     })
         .then(res => res.json())
         .then(data => {
@@ -58,15 +60,20 @@ const getViews = () => {
 const getComments = () => {
     fetch(`${backendUrl}/comments/${cast}.cast`)
         .then(res => res.json())
-        .then(data => {
+        .then(comments => {
             commentsBox.innerHTML = ''
-            data.comments.forEach((comment) => {
+            comments.forEach((comment) => {
                 const commentHtml = `
                 <div class="comment">
-                    ${comment.message}
+                    <div class="comment-author">
+                        ${comment.author}
+                    </div>
+                    <div class="comment-message">
+                        ${comment.message}
+                    </div>
                 </div>
                 `
-                commentsBox.insertAdjacentElement('beforeend', commentHtml)
+                commentsBox.insertAdjacentHTML('beforeend', commentHtml)
             })
         })
 }
