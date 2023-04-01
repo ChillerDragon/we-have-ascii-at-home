@@ -46,6 +46,13 @@ fn get_ip(req: &HttpRequest) -> String {
     // let ip_addr = req.peer_addr().unwrap().to_string(); // with port
     let ip_addr = req.peer_addr().unwrap().ip().to_string(); // w out port
     if ip_addr == "127.0.0.1" || ip_addr == "::1" {
+        // Prefer custom header setup by proxy
+        // https://github.com/ddnet/ddnet/tree/42982759a93c4d0f74a8c2f07fe94a65b789bafb/src/mastersrv#reverse-proxy
+        let forward = req.headers().get("Connecting-IP");
+        if let Some(forward) = forward {
+            let ips: Vec<&str> = forward.to_str().unwrap().split(",").collect();
+            return ips[0].to_string();
+        }
         // if client is local host
         // check if there is a proxy in front of the api backend
         let forward = req.headers().get("x-forwarded-for");
