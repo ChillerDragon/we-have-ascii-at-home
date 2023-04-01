@@ -2,22 +2,48 @@ html, body {
     background-color: rgb(63, 60, 60);
 }
 
+.code-snippet {
+    overflow: scroll;
+    padding-bottom: 20px; /* for the scoll handle */
+    /*
+        some browsers/fonts like to
+        replace letter combinations with ligatures
+        for example fl and fi becomes one letter
+        that messes up fixed width spacing and the arrows
+        are not aligned in the code snippets.
+        Because the string flags is displayed 1
+        letter width shorter one some systems.
+        Disabling liga fixes this.
+    */
+    font-feature-settings:"liga" 0, "dlig" 0;
+}
+
 .player-container {
     height: 900px;
 }
 
 .container {
     background-color: rgb(90, 85, 94);
-    border-radius: 2em;
-    padding: 2em;
-    margin: 2em;
+    border-radius: 5px;
+    margin: 10px;
+    padding: 10px;
+    box-shadow: 3px 5px 3px rgba(0, 0, 0, 0.397);
+}
+
+.flash-alert {
+    border: 3px solid red;
+    background-color: rgb(255, 101, 101);
+    border-radius: 3px;
+    margin: 10px;
+    padding: 10px;
 }
 
 .comment {
     background-color: rgb(164, 152, 152);
-    border-radius: 2em;
-    padding: 2em;
-    margin: 2em;
+    border-radius: 3px;
+    padding: 10px;
+    margin: 20px;
+    box-shadow: 3px 5px 3px rgba(0, 0, 0, 0.397);
 }
 
 .comment-author {

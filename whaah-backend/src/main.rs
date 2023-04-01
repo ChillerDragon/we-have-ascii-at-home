@@ -240,7 +240,7 @@ async fn post_comment(
 
 
     let re_author = Regex::new(r"^[a-zA-Z0-9_-]{1,32}$").unwrap();
-    let re_comment = Regex::new(r"^[a-zA-Z0-9\.,:!?=*#\\()\[\]{}_\n -]+$").unwrap();
+    let re_comment = Regex::new(r"^[a-zA-Z0-9\.,:!?=*#\\()\[\]{}_\n -]{1,2048}$").unwrap();
     if !re_comment.is_match(&comment.message) {
         let err = ErrorMsg {
             error: format!("comment message did not match {}", re_comment)
