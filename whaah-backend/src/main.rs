@@ -65,7 +65,11 @@ async fn get_views(cast: web::Path<String>, req: HttpRequest) -> impl Responder 
                 true
             })
             .unwrap();
-        return format!("{{\"views\": {}}}", &views);
+
+        let views_msg = GetViews {
+            views: views
+        };
+        return serde_json::to_string(&views_msg).unwrap();
 
         // let query = "select count(*) as views from views where CastID = ?;";
         // let mut stmt = connection.prepare(query).unwrap();
@@ -75,7 +79,7 @@ async fn get_views(cast: web::Path<String>, req: HttpRequest) -> impl Responder 
         // }
     }
     println!("[get_views] Failed to get id for cast={}\n", cast);
-    return format!("{{\"error\": \"failed to get views for {}\"}}", &cast);
+    return err_msg(format!("failed to get views for {}", &cast));
 }
 
 // Horrible api endpoints i know...
@@ -143,20 +147,49 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
         stmt.bind((6, "todo ref")).unwrap();
         while let Ok(State::Row) = stmt.next() {
             println!("  Failed to insert view\n");
-            return format!("{{\"error\": \"failed to add view for {}\"}}", &cast);
+            return err_msg(format!("failed to add view for {}", &cast));
         }
         println!("  Inserted view\n");
-        return format!("{{\"message\": \"add view for {}\"}}", &cast);
+        return info_msg(format!("add view for {}", &cast));
     }
 
     println!("  Tried to view invalid cast: {}", &cast);
-    return format!("{{\"error\": \"failed to add view for {}\"}}", &cast);
+    return err_msg(format!("failed to add view for {}", &cast));
 }
 
 #[derive(Deserialize)]
 struct Comment {
     author: String,
     message: String,
+}
+
+#[derive(Serialize)]
+struct ErrorMsg {
+    error: String,
+}
+
+#[derive(Serialize)]
+struct InfoMsg{
+    message: String,
+}
+
+#[derive(Serialize)]
+struct GetViews{
+    views: i64,
+}
+
+fn info_msg(msg: String) -> String {
+    let info = InfoMsg {
+        message: msg.clone()
+    };
+    return serde_json::to_string(&info).unwrap();
+}
+
+fn err_msg(msg: String) -> String {
+    let err = ErrorMsg {
+        error: msg.clone()
+    };
+    return serde_json::to_string(&err).unwrap();
 }
 
 #[get("/comments/{name}")]
@@ -180,19 +213,11 @@ async fn get_comments(cast: web::Path<String>) -> impl Responder {
             println!("author={} message={}\n", author, message);
         }
 
-        return format!(
-            "{{\"comments\": [{{\"message\": \"add view for {}\"}}}}",
-            &cast
-        );
+        return info_msg(format!("add view for {}", &cast));
     }
 
     println!("Tried to get comments for invalid cast: {}", &cast);
-    return format!("{{\"error\": \"failed to get comments for {}\"}}", &cast);
-}
-
-#[derive(Serialize)]
-struct ErrorMsg {
-    error: String,
+    return err_msg(format!("failed to get comments for {}", &cast));
 }
 
 #[post("/comments/{cast}")]
@@ -252,10 +277,10 @@ async fn post_comment(
         stmt.bind((8, "todo ref")).unwrap();
         let res = stmt.next();
         println!("Inserted comment stmt: {:#?}\n", res);
-        return format!("{{\"message\": \"add comment for {}\"}}", &cast);
+        return info_msg(format!("add comment for {}", &cast));
     }
     println!("Tried to comment invalid cast: {}", &cast);
-    return format!("{{\"error\": \"failed to add view for {}\"}}", &cast);
+    return err_msg(format!("failed to add view for {}", &cast));
 }
 
 #[actix_web::main]
