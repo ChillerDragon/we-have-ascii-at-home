@@ -169,7 +169,10 @@ const getComments = () => {
             comments.forEach((comment) => {
                 const commentHtml = `
                 <div class="comment">
-                    <div class="comment-author">${comment.author}</div>
+                    <div class="comment-header">
+                        <div class="comment-author">${comment.author}</div>
+                        <div class="comment-timestamp">${comment.timestamp.split('.')[0]}</div>
+                    </div>
                     <pre class="code-snippet comment-message">${comment.message}</pre>
                 </div>
                 `

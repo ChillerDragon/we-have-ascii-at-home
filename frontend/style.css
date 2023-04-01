@@ -51,6 +51,16 @@ html, body {
     font-size: large;
 }
 
+.comment-timestamp {
+    color: rgb(34, 34, 34);
+    font-size: small;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+}
+
 .comment-message {
     color: rgb(71, 71, 71);
     font-size: medium;
