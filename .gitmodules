@@ -1,3 +1,6 @@
 [submodule "db"]
 	path = db
 	url = git@github.com:we-have-ascii-at-home/db.git
+[submodule "frontend/casts"]
+	path = frontend/casts
+	url = git@github.com:we-have-ascii-at-home/casts.git
