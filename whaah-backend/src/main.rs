@@ -207,7 +207,7 @@ async fn get_comments(cast: web::Path<String>) -> impl Responder {
         let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
         // TODO: do not hardcode a limit of 100
         //       use pagination instead
-        let query = "SELECT * FROM comments WHERE CastID = ? ORDER BY Timestamp ASC LIMIT 100";
+        let query = "SELECT * FROM comments WHERE CastID = ? ORDER BY Timestamp DESC LIMIT 100";
         let mut stmt = connection.prepare(query).unwrap();
         stmt.bind((1, cast_id)).unwrap();
         println!("Gettings comments for cast: {}", &cast);
@@ -215,7 +215,6 @@ async fn get_comments(cast: web::Path<String>) -> impl Responder {
         while let Ok(State::Row) = stmt.next() {
             let author: String = stmt.read::<String, _>("Author").unwrap();
             let message: String = stmt.read::<String, _>("Message").unwrap();
-            println!("author={} message={}\n", author, message);
             let cmt = Comment {
                 author: author,
                 message: message
