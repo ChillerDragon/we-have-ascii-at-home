@@ -8,6 +8,42 @@ use sqlite::State;
 use std::fs;
 use regex::Regex;
 
+#[derive(Serialize, Deserialize)]
+struct Comment {
+    author: String,
+    message: String,
+}
+
+#[derive(Serialize)]
+struct ErrorMsg {
+    error: String,
+}
+
+#[derive(Serialize)]
+struct InfoMsg{
+    message: String,
+}
+
+#[derive(Serialize)]
+struct GetViews{
+    views: i64,
+}
+
+fn info_msg(msg: String) -> String {
+    let info = InfoMsg {
+        message: msg.clone()
+    };
+    return serde_json::to_string(&info).unwrap();
+}
+
+fn err_msg(msg: String) -> String {
+    let err = ErrorMsg {
+        error: msg.clone()
+    };
+    return serde_json::to_string(&err).unwrap();
+}
+
+
 #[get("/")]
 async fn index() -> impl Responder {
     println!("index hit\n");
@@ -157,41 +193,6 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
     return err_msg(format!("failed to add view for {}", &cast));
 }
 
-#[derive(Deserialize)]
-struct Comment {
-    author: String,
-    message: String,
-}
-
-#[derive(Serialize)]
-struct ErrorMsg {
-    error: String,
-}
-
-#[derive(Serialize)]
-struct InfoMsg{
-    message: String,
-}
-
-#[derive(Serialize)]
-struct GetViews{
-    views: i64,
-}
-
-fn info_msg(msg: String) -> String {
-    let info = InfoMsg {
-        message: msg.clone()
-    };
-    return serde_json::to_string(&info).unwrap();
-}
-
-fn err_msg(msg: String) -> String {
-    let err = ErrorMsg {
-        error: msg.clone()
-    };
-    return serde_json::to_string(&err).unwrap();
-}
-
 #[get("/comments/{name}")]
 async fn get_comments(cast: web::Path<String>) -> impl Responder {
     let connection = sqlite::open("../db/whaah.db").unwrap();
@@ -199,6 +200,8 @@ async fn get_comments(cast: web::Path<String>) -> impl Responder {
 
     let mut stmt = connection.prepare(query).unwrap();
     stmt.bind((1, cast.to_string().as_str())).unwrap();
+
+    let mut comments: Vec<Comment> = Vec::new();
 
     while let Ok(State::Row) = stmt.next() {
         let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
@@ -211,9 +214,14 @@ async fn get_comments(cast: web::Path<String>) -> impl Responder {
             let author: String = stmt.read::<String, _>("Author").unwrap();
             let message: String = stmt.read::<String, _>("Message").unwrap();
             println!("author={} message={}\n", author, message);
+            let cmt = Comment {
+                author: author,
+                message: message
+            };
+            comments.push(cmt);
         }
 
-        return info_msg(format!("add view for {}", &cast));
+        return serde_json::to_string(&comments).unwrap();
     }
 
     println!("Tried to get comments for invalid cast: {}", &cast);
