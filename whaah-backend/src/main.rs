@@ -45,15 +45,17 @@ fn err_msg(msg: String) -> String {
 }
 
 fn get_ip(req: &HttpRequest) -> String {
-    let ip = match req.headers().get("x-forwarded-for") {
-        Some(ip) => ip.to_str().unwrap(),
-        None => ""
-    };
-    if ip != "" {
-        return ip.to_string();
-    }
     // let ip_addr = req.peer_addr().unwrap().to_string(); // with port
     let ip_addr = req.peer_addr().unwrap().ip().to_string(); // w out port
+    if ip_addr == "127.0.0.1" || ip_addr == "::1" {
+        let forward_ip = match req.headers().get("x-forwarded-for") {
+            Some(forward_ip) => forward_ip.to_str().unwrap(),
+            None => ""
+        };
+        if forward_ip != "" {
+            return forward_ip.to_string();
+        }
+    }
     return ip_addr;
 }
 
