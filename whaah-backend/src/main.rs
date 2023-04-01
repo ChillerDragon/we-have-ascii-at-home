@@ -238,7 +238,7 @@ async fn post_comment(
     println!("{:#?}\n", req);
 
 
-    let re = Regex::new(r"^[a-zA-Z0-9\.,:!?=*#\\()\[\]{}_ -]+$").unwrap();
+    let re = Regex::new(r"^[a-zA-Z0-9\.,:!?=*#\\()\[\]{}_\n -]+$").unwrap();
     if !re.is_match(&comment.message) {
         let err = ErrorMsg {
             error: format!("comment message did not match {}", re)
