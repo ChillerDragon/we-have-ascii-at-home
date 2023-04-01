@@ -1375,6 +1375,7 @@ dependencies = [
  "json",
  "regex",
  "serde",
+ "serde_json",
  "sqlite",
 ]
 

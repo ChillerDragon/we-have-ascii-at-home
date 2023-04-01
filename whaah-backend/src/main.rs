@@ -2,7 +2,7 @@ use actix_cors::Cors;
 use actix_web::HttpRequest;
 use actix_web::{get, post, web, App, HttpServer, Responder};
 use chrono::{DateTime, Local};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlite;
 use sqlite::State;
 use std::fs;
@@ -163,6 +163,11 @@ async fn get_comments(cast: web::Path<String>) -> impl Responder {
     return format!("{{\"error\": \"failed to get comments for {}\"}}", &cast);
 }
 
+#[derive(Serialize)]
+struct ErrorMsg {
+    error: String,
+}
+
 #[post("/comments/{cast}")]
 async fn post_comment(
     cast: web::Path<String>,
@@ -175,12 +180,16 @@ async fn post_comment(
 
     let re = Regex::new(r"^[a-zA-Z0-9\.,:!?=*#\\()\[\]{}_ -]+$").unwrap();
     if !re.is_match(&comment.message) {
-        // TODO: this is not valid json use some proper rust json builder
-        return format!("{{\"error\": \"comment message did not match {}\"}}", re);
+        let err = ErrorMsg {
+            error: format!("comment message did not match {}", re)
+        };
+        return serde_json::to_string(&err).unwrap();
     }
     if !re.is_match(&comment.author) {
-        // TODO: this is not valid json use some proper rust json builder
-        return format!("{{\"error\": \"comment author did not match {}\"}}", re);
+        let err = ErrorMsg {
+            error: format!("comment author did not match {}", re)
+        };
+        return serde_json::to_string(&err).unwrap();
     }
 
     let connection = sqlite::open("../db/whaah.db").unwrap();
