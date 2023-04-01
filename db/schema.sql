@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS "comments"
 	CastID INTEGER NOT NULL,
 	Author TEXT NOT NULL,
 	Message TEXT NOT NULL,
-	ParentCommentID INTEGER NOT NULL,
+	ParentCommentID INTEGER Default NULL,
 	Likes INTEGER Default 0 NOT NULL,
 	IP TEXT NOT NULL,
 	Timestamp TEXT NOT NULL,
