@@ -33,6 +33,6 @@ cargo run
 Write comments using curl
 
 ```bash
-curl -X POST -H "Content-Type: application/json" --data '{"author": "nameless", "message": "sample comment"}' http://localhost:8180/comments/twnet.cast
+curl -X POST -H "Content-Type: application/json" --data '{"author": "nameless", "timestamp": "$(date --rfc-3339='ns')", "message": "sample comment"}' http://localhost:8180/comments/twnet.cast
 ```
 
