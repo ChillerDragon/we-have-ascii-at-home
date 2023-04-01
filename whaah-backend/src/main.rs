@@ -44,6 +44,19 @@ fn err_msg(msg: String) -> String {
     return serde_json::to_string(&err).unwrap();
 }
 
+fn get_ip(req: &HttpRequest) -> String {
+    let ip = match req.headers().get("x-forwarded-for") {
+        Some(ip) => ip.to_str().unwrap(),
+        None => ""
+    };
+    if ip != "" {
+        return ip.to_string();
+    }
+    // let ip_addr = req.peer_addr().unwrap().to_string(); // with port
+    let ip_addr = req.peer_addr().unwrap().ip().to_string(); // w out port
+    return ip_addr;
+}
+
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -79,7 +92,7 @@ async fn get_views(cast: web::Path<String>, req: HttpRequest) -> impl Responder 
     while let Ok(State::Row) = stmt.next() {
         let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
         let user_agent = req.headers().get("user-agent").unwrap().to_str().unwrap();
-        let ip_addr = req.peer_addr().unwrap().ip().to_string(); // w out port
+        let ip_addr = get_ip(&req);
         // let now: DateTime<Local> = Local::now();
         // let ts: String = now.to_string();
         println!(
@@ -135,8 +148,7 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
     while let Ok(State::Row) = stmt.next() {
         let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
         let user_agent = req.headers().get("user-agent").unwrap().to_str().unwrap();
-        // let ip_addr = req.peer_addr().unwrap().to_string(); // with port
-        let ip_addr = req.peer_addr().unwrap().ip().to_string(); // w out port
+        let ip_addr = get_ip(&req);
         let now: DateTime<Local> = Local::now();
         let now = now.with_timezone(now.offset());
         let ts: String = now.to_rfc3339();
@@ -266,7 +278,7 @@ async fn post_comment(
     while let Ok(State::Row) = stmt.next() {
         let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
         let user_agent = req.headers().get("user-agent").unwrap().to_str().unwrap();
-        let ip_addr = req.peer_addr().unwrap().ip().to_string(); // w out port
+        let ip_addr = get_ip(&req);
         let now: DateTime<Local> = Local::now();
         let ts: String = now.to_string();
         println!(
