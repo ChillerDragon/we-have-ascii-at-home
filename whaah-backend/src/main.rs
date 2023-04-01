@@ -42,7 +42,7 @@ async fn get_views(cast: web::Path<String>, req: HttpRequest) -> impl Responder 
     while let Ok(State::Row) = stmt.next() {
         let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
         let user_agent = req.headers().get("user-agent").unwrap().to_str().unwrap();
-        let ip_addr = req.peer_addr().unwrap().to_string();
+        let ip_addr = req.peer_addr().unwrap().ip().to_string(); // w out port
         // let now: DateTime<Local> = Local::now();
         // let ts: String = now.to_string();
         println!(
@@ -83,7 +83,7 @@ async fn get_views(cast: web::Path<String>, req: HttpRequest) -> impl Responder 
 // But I want to later add some dirty hacks to track views
 // Even from browsers without javascript
 // by loading this url with a link or image tag
-#[get("/view/{name}")]
+#[get("/view/{cast}")]
 async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
     let connection = sqlite::open("../db/whaah.db").unwrap();
     let query = "SELECT ID FROM casts WHERE Filename = ?";
@@ -94,13 +94,40 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
     while let Ok(State::Row) = stmt.next() {
         let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
         let user_agent = req.headers().get("user-agent").unwrap().to_str().unwrap();
-        let ip_addr = req.peer_addr().unwrap().to_string();
+        // let ip_addr = req.peer_addr().unwrap().to_string(); // with port
+        let ip_addr = req.peer_addr().unwrap().ip().to_string(); // w out port
         let now: DateTime<Local> = Local::now();
-        let ts: String = now.to_string();
+        let now = now.with_timezone(now.offset());
+        let ts: String = now.to_rfc3339();
         println!(
             "Adding view for cast_id={} ip={} user_agent={} cast={}",
             cast_id, &ip_addr, &user_agent, &cast
         );
+        let query = concat!(
+            "SELECT Timestamp ",
+            "FROM views ",
+            "WHERE IP = ? ",
+            "ORDER BY Timestamp ",
+            "DESC LIMIT 1");
+        let mut stmt = connection.prepare(query).unwrap();
+        stmt.bind((1, ip_addr.as_str())).unwrap();
+
+        while let Ok(State::Row) = stmt.next() {
+            let last_ts = stmt.read::<String, _>("Timestamp").unwrap();
+            let last_date = DateTime::parse_from_rfc3339(&last_ts).unwrap();
+            let last_view_mins_ago: i64 = (now - last_date).num_minutes();
+            println!("  last view from this ip was {} ({} minutes ago)\n", last_ts, last_view_mins_ago);
+            if last_view_mins_ago < 10 {
+                let err = ErrorMsg {
+                    error: format!(
+                            "Not counting another view since your last was {} minutes ago",
+                            last_view_mins_ago
+                        )
+                };
+                return serde_json::to_string(&err).unwrap();
+            }
+        }
+
         let query = concat!(
             "INSERT INTO views ",
             "(CastID, IP, Timestamp, UserAgent, Tracker, Ref) ",
@@ -115,14 +142,14 @@ async fn view(cast: web::Path<String>, req: HttpRequest) -> impl Responder {
         stmt.bind((5, "todo tracker")).unwrap();
         stmt.bind((6, "todo ref")).unwrap();
         while let Ok(State::Row) = stmt.next() {
-            println!("Failed to insert view\n");
+            println!("  Failed to insert view\n");
             return format!("{{\"error\": \"failed to add view for {}\"}}", &cast);
         }
-        println!("Inserted view\n");
+        println!("  Inserted view\n");
         return format!("{{\"message\": \"add view for {}\"}}", &cast);
     }
 
-    println!("Tried to view invalid cast: {}", &cast);
+    println!("  Tried to view invalid cast: {}", &cast);
     return format!("{{\"error\": \"failed to add view for {}\"}}", &cast);
 }
 
@@ -201,7 +228,7 @@ async fn post_comment(
     while let Ok(State::Row) = stmt.next() {
         let cast_id: i64 = stmt.read::<i64, _>("ID").unwrap();
         let user_agent = req.headers().get("user-agent").unwrap().to_str().unwrap();
-        let ip_addr = req.peer_addr().unwrap().to_string();
+        let ip_addr = req.peer_addr().unwrap().ip().to_string(); // w out port
         let now: DateTime<Local> = Local::now();
         let ts: String = now.to_string();
         println!(
